@@ -143,7 +143,8 @@ Now, if you have set up VNC before on Arch, you will be tempted to try and test 
 ```
 You should now be able to minimize the terminal emulator, open AndroidVNC, and connect to ```127.0.0.1:590X``` where X is the number we provided to vncserver, in this case ```1```, to log in as ```SomeUsername```. Your VNC password will be the password you created with ```vncpasswd```.
 
-You will see a lot of error messages regarding XKEYBOARD, and these can be ignored. These errors refer to Android-specific actions that are not found in Linux systems, and therefore XKEYBOARD is unsure how to map them to the Arch system.
+### Errors
+Starting VNC server, in the terminal you will see a lot of error messages regarding XKEYBOARD, and these can be ignored. These errors refer to Android-specific actions that are not found in Linux systems, and therefore XKEYBOARD is unsure how to map them to the Arch system.
 
 If you figure out how to address or remove the errors:
 ```
