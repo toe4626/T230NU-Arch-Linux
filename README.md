@@ -1,8 +1,11 @@
 # T230NU Arch Linux
 This guide details how to get arch linux up and running on the Samsung Galaxy Tab 4 T230NU. The device must be rooted first, thankfully that is pretty easy. It is expected that the device has an external SD Card (4gb or more). This technically can be done on the internal SdCard, though that greatly limits the space you have to work with.
 
+## Special Thanks to
+- [Tomodoro](https://github.com/Tomodoro) for verifying this guide works and getting the VNC graphical environment running
+
 ## Disclaimer
-This has only been tested using the T230NU, and as such can't be garaunteed to work on any other device. That said, this has only been tested thus far by myself, and as such it can be expected that you could either successfully install Arch on your old tablet, or you could brick your device. Whatever you do, do it responsibly.
+This has only been tested using the T230NU, and as such can't be garaunteed to work on any other device. That said, this isn't the device's intended original purpose, and as such it can be expected that you could either successfully install Arch on your old tablet, or you could brick your device. Whatever you do, do it responsibly.
 
 ## Rooting The T230NU
 First we must download some software to begin rooting:
@@ -28,6 +31,7 @@ Before moving forward, I think there are some integral apps that you should down
 - Titanium Backup - Backup/application manager. Great if you want to save some space/CPU/RAM by disabling all google products.
 - BusyBox Free - Necessary for enabling necessary linux commands in the terminal.
 - Hacker's Keyboard - Soft keyboard that gives you all the bells and whistles of a PC keyboard.
+- AndroidVNC - VNC viewer for old android devices
 
 Before moving forward, it would be good to use Titanium Backup to create a backup of your apps or device. Hopefully you won't need it.
 
@@ -35,54 +39,69 @@ Before moving forward, it would be good to use Titanium Backup to create a backu
 
 The T230NU tablet uses the Marvell PXA1088 chipset with ARMv7 architecture. It seems though, that a specialised Arch release for ARMv7 architecture with this specific chipset doesn't exist, so you should download the [ARMv7 Multi-platform](http://os.archlinuxarm.org/os/ArchLinuxARM-armv7-latest.tar.gz) Arch release (I am not saying other releases don't work, I just have not tested them, and know this one works). If you havent already opened BusyBox and allowed it to install its Linux tools, go ahead and do so before moving forward.
 
+### A Note Regarding Storage
+
+This guide was originally created and tested so that the arch image and chroot environment would exist on an external SD card so that you can have a much larger disk image. The internal sdcard can be used also but since it has such little space to work with, it can make it difficult to create the disk image without running out of memory, and if the disk image is created but is too small then you wont be able to unpack the arch tar. If you need to use internal memory, change the line 
+```
+# export STOR=/storage/extSdCard
+```
+to
+```
+# export STOR=/storage/emulated/0
+```
 ### Create the disk image
 ```
 # su
-# dd if=/dev/zero of=/storage/extSdCard/arch.img bs=1048576 count=1024
-# mke2fs -F -T ext4 /storage/extSdCard/arch.img
+# export STOR=/storage/extSdCard
+# dd if=/dev/zero of=$STOR/arch.img bs=1048576 count=1024
+# mke2fs -F -T ext4 $STOR/arch.img
 ```
 ### Create chroot environment
 ```
-# mkdir /storage/extSdCard/chroot
-# losetup /dev/block/loop7 /storage/extSdCard/arch.img
-# mount -t ext4 /dev/block/loop7 /storage/extSdCard/chroot
-# tar -xzf -C /storage/extSdCard/chroot /storage/extSdCard/arch.tar.gz
+# mkdir $STOR/chroot
+# losetup /dev/block/loop7 $STOR/arch.img
+# mount -t ext4 /dev/block/loop7 $STOR/chroot
+# tar -xzf $STOR/arch.tar.gz -C $STOR/chroot
 ```
 ### Configure chroot environment
 ```
-# rm /storage/extSdCard/chroot/etc/resolv.conf
-# echo "nameserver 8.8.8.8" > /storage/extSdCard/chroot/etc/resolv.conf
-# echo "export HOME=/root" >> /storage/extSdCard/chroot/etc/profile
-# echo "unset LD_PRELOAD" >> /storage/extSdCard/chroot/etc/profile
-# echo "cd /root" >> /storage/extSdCard/chroot/etc/profile
+# rm $STOR/chroot/etc/resolv.conf
+# echo "nameserver 8.8.8.8" > $STOR/chroot/etc/resolv.conf
+# echo "export HOME=/root" >> $STOR/chroot/etc/profile
+# echo "unset LD_PRELOAD" >> $STOR/chroot/etc/profile
+# echo "cd /root" >> $STOR/chroot/etc/profile
 ```
 ### Mount and enter chroot environment
 ```
-# mount -o bind /dev/ /storage/extSdCard/chroot/dev/
-# mount -t proc proc /storage/extSdCard/chroot/proc/
-# mount -t sysfs sysfs /storage/extSdCard/chroot/sys/
-# mount -t tmpfs tmpfs /storage/extSdCard/chroot/tmp/
-# mount -t devpts devpts /storage/extSdCard/chroot/dev/pts/
-# chroot /storage/extSdCard/chroot/ /bin/bash -l 
+# mount -o bind /dev/ $STOR/chroot/dev/
+# mount -t proc proc $STOR/chroot/proc/
+# mount -t sysfs sysfs $STOR/chroot/sys/
+# mount -t tmpfs tmpfs $STOR/chroot/tmp/
+# mount -o gid=5,mode=620 -t devpts devpts $STOR/chroot/dev/pts/
+# chroot $STOR/chroot/ /bin/bash -l 
 ```
 
-You can also use [this shell script]() that will do all of this for you. You will need to preform the mounts once per terminal session, meaning every time you open up the terminal for the first time after booting, you will need to perform the last section (Mount and enter chroot environment) every time. Currently, Terminal Emulator opens to the non-root user and you have to mount and chroot into Arch. To always open the terminal directly into your Arch environment, you can copy [this other shell script]() into your sdCard (NOT EXTERNAL) and set Terminal Emulator's 'Initial Command' to the path of the mounting shell script. 
+You will need to preform the mounts once per terminal session, meaning every time you open up the terminal for the first time after booting, you will need to perform the last section (Mount and enter chroot environment) every time. Currently, Terminal Emulator opens to the non-root user and you have to mount and chroot into Arch. To always open the terminal directly into your Arch environment, you can create a shell script like the one below and save it to your sdCard (NOT EXTERNAL) and set Terminal Emulator's 'Initial Command' to the path of the mounting shell script (be sure to change the storage directory if you need to). 
 
 ```
 #!/system/xbin/sh
-su -c losetup /dev/block/loop7 /storage/extSdCard/arch.img
-su -c mount -o bind /dev/ /storage/extSdCard/chroot/dev/
-su -c mount -t proc proc /storage/extSdCard/chroot/proc/
-su -c mount -t sysfs sysfs /storage/extSdCard/chroot/sys/
-su -c mount -t tmpfs tmpfs /storage/extSdCard/chroot/tmp/
-su -c chroot /storage/extSdCard/chroot/ /bin/bash -l 
+export STOR=/storage/extSdCard
+su -c losetup /dev/block/loop7 $STOR/arch.img
+su -c mount -o bind /dev/ $STOR/chroot/dev/
+su -c mount -t proc proc $STOR/chroot/proc/
+su -c mount -t sysfs sysfs $STOR/chroot/sys/
+su -c mount -t tmpfs tmpfs $STOR/chroot/tmp/
+su -c chroot $STOR/chroot/ /bin/bash -l 
 ```
 
-If you have installed your busybox tools to a directory that ISN'T /system/xbin, then you will need to change the first line of the shell script to match your custom install location.
+Also, if you have installed your busybox tools to a directory that ISN'T /system/xbin, then you will need to change the first line of the shell script to match your custom install location.
 
-Et voila! Arch is installed on your device!
+Et Voila! Arch is installed!
 
-### Here There Be Monsters
+## Moving Foreward
+
+### Updating Arch
+
 Before galavanting off into the land of bugs and stack overflow light reading, you will probably need/want to do some things first:
 - You will want to update the Arch system, but you will probably get an error in regards to certificates or the pacman keychain. This is because it is trying to use the x86 certs, and will need the proper ARM certs. You will want to run:
 ```
@@ -97,6 +116,50 @@ Before galavanting off into the land of bugs and stack overflow light reading, y
 # pacman -Rs linux-armv7
 ```
 
-### Parting Words
-So far, I havent been able to get xorg to work on this device because there is no /dev/tty0 for it to use. This could be a simple fix, or an issue inherent in the architecture of the device, I have no clue. The idea is to be able to run something lightweight like DWM or i3 through a VNC Viewer application on the tablet (such as 'androidVNC' in the Play Store). If you find this guide useful and actually get it figured out, please let me know. Feel free to make pull requests if there is more information you find to be relevant in implementing and customizing this Arch install.
+### VNC Graphical Environment
 
+To run a VNC environment we will need to install some things:
+```
+# pacman -S tigervnc xorg-server openbox xterm ttf-dejavu ttf-liberation
+```
+Create a password using ```vncpasswd``` which will store the hashed password in ```~/.vnc/passwd```, then create the config file ```~/.vnc/config``` and set the correct settings:
+```
+session=openbox
+geometry=1280x720
+localhost
+alwaysshared
+```
+If you are using another window manager, such as DWM or something, change the session name accordingly.
+
+We can create our first new user quickly by running:
+```
+# echo ":1=SomeUsername" >> /etc/tigervnc/vncserver.users
+```
+The number ':1' in the file corresponds to a TCP port. By default, :1 is TCP port 5901 (5900+1). If you want to have more than one VNC server going at a time, a second instance can then run on the next highest, free port, i.e 5902 (5900+2).
+
+Now, if you have set up VNC before on Arch, you will be tempted to try and test the VNC server the systemd way, but since we are inside a chroot environment, this simply won't work. We have to start VNC with: 
+```
+# vncserver :1
+```
+You should now be able to minimize the terminal emulator, open AndroidVNC, and connect to ```127.0.0.1:590X``` where X is the number we provided to vncserver, in this case ```1```, to log in as ```SomeUsername```. Your VNC password will be the password you created with ```vncpasswd```.
+
+You will see a lot of error messages regarding XKEYBOARD, and these can be ignored. These errors refer to Android-specific actions that are not found in Linux systems, and therefore XKEYBOARD is unsure how to map them to the Arch system.
+
+If you figure out how to address or remove the errors:
+```
+xinit: XFree86_VT property unexpectedly has 0 items instead of 1
+```
+or 
+```
+dbus-update-activation-environment: error: unable to connect to D-Bus: Using X11 for dbus-daemon autolaunch was disabled at compile time, set yout DBUS_SESSION_BUS_ADDRESS instead
+```
+Then please let me know!
+
+### Parting Words
+Thanks for making it through the guide! If you find this guide useful and actually get it working, please let me know, I always love to see what people can do with these kinds of things. Feel free to make pull requests if there is more information you find to be relevant in implementing and customizing this Arch install.
+
+#### Sources
+
+- https://archlinuxarm.org/forum/viewtopic.php?f=3&t=12797
+- https://technohackerblog.blogspot.com/2016/07/running-arch-linux-in-chroot-on-android.html?m=1
+- https://blog.flexispy.com/how-to-root-the-samsung-galaxy-tab-4-sm-t230nu/
