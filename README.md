@@ -129,7 +129,7 @@ geometry=1280x720
 localhost
 alwaysshared
 ```
-If you are using another window manager, such as DWM or something, change the session name accordingly.
+If you want to be able to access the device using a VNC viewer on a seperate device, you will need to omit ```localhost```. Also, if you are using another window manager, such as DWM or something, change the session name accordingly.
 
 We can create our first new user quickly by running:
 ```
